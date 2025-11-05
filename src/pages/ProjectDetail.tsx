@@ -143,6 +143,7 @@ const ProjectDetailPage = () => {
   const [openRfiDialog, setOpenRfiDialog] = useState(false);
   const [openPkgDialog, setOpenPkgDialog] = useState(false);
   const [pkgToEdit, setPkgToEdit] = useState<PackageRecord | null>(null);
+  const [savingPackage, setSavingPackage] = useState(false);
 
   const [newRfi, setNewRfi] = useState({
     rfiNumber: "",
@@ -278,10 +279,10 @@ const ProjectDetailPage = () => {
   };
 
   const handleAddPackage = async () => {
-    if (!projectId) return;
+    if (!projectId || savingPackage) return;
     try {
       if (!newPkg.name) return;
-      // Auto-assign serial/packagenumber for new packages; keep existing on edit
+      setSavingPackage(true);
       const autoSerial = !pkgToEdit
         ? await computeNextSerial()
         : pkgToEdit.packagenumber || null;
@@ -388,6 +389,8 @@ const ProjectDetailPage = () => {
         description: String(e),
         variant: "destructive" as any,
       });
+    } finally {
+      setSavingPackage(false);
     }
   };
 
@@ -790,9 +793,9 @@ const ProjectDetailPage = () => {
                             <Button
                               size="sm"
                               onClick={handleAddPackage}
-                              disabled={!newPkg.name}
+                              disabled={!newPkg.name || savingPackage}
                             >
-                              Save
+                              {savingPackage ? "Saving..." : "Save"}
                             </Button>
                           </div>
                         </div>
