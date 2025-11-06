@@ -654,15 +654,15 @@ export function ProjectsTable({
     return matchesSearch && matchesStatus && matchesLocation && matchesClient;
   });
 
-  // and falls back to string comparison if parsing fails.
-  const sortedProjects = (() => {
-    const extractNumber = (s?: string) => {
+  // Sort filtered projects by Sol Project No in descending order so newly added
+  const sortedProjects = (() => {  
+    const extractNumber = (s?: string) => { 
       if (!s) return NaN;
       const m = String(s).match(/(\d+)(?!.*\d)/); // last group of digits
       return m ? Number(m[1]) : NaN;
     };
 
-    return [...filteredProjects].sort((a, b) => {
+    return [...filteredProjects].sort((a, b) => {  //
       const aKey = (a.solProjectNo || a.projectNo || "").toString();
       const bKey = (b.solProjectNo || b.projectNo || "").toString();
       const aNum = extractNumber(aKey);

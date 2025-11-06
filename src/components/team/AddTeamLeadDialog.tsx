@@ -222,11 +222,20 @@ export function AddTeamLeadDialog({
       onAdded?.();
     } catch (err: any) {
       console.error("Error adding TL", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to add team lead.",
-        variant: "destructive",
-      });
+      // Check for duplicate email error
+      if (err.code === '23505' && err.message?.includes('User_email_key')) {
+        toast({
+          title: "Email Already Exists",
+          description: `User with email "${email}" already exists in the system.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: err.message || "Failed to add team lead.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
