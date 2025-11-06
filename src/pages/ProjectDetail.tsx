@@ -88,7 +88,6 @@ interface PackageRecord {
   createdat?: string | null;
   updatedat?: string | null;
   ifaversion?: string | null;
-  bfaversion?: string | null;
   ifcversion?: string | null;
   ifadate?: string | null;
   bfadate?: string | null;
@@ -161,7 +160,6 @@ const ProjectDetailPage = () => {
     submitalStatus: "IN_PROGRESS",
     remarks: "",
     ifaVersion: "",
-    bfaVersion: "",
     ifcVersion: "",
   });
   // When non-null, `pkgToEdit` indicates we're editing an existing package.
@@ -226,10 +224,25 @@ const ProjectDetailPage = () => {
       const { data, error } = await supabase
         .from("ProjectPackage")
         .select("*")
-        .eq("projectid", projectId)
-        .order("tentativedate", { ascending: true });
+        .eq("projectid", projectId);
       if (error) throw error;
-      setPkgList((data || []) as any);
+      // Sort by numeric value of packagenumber (serial) ascending
+      const toNum = (val: any) => {
+        if (val === null || val === undefined) return Number.POSITIVE_INFINITY;
+        const onlyDigits = String(val).replace(/[^0-9]/g, "");
+        const n = parseInt(onlyDigits, 10);
+        return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+      };
+      const sorted = (data || []).sort((a: any, b: any) => {
+        const na = toNum(a.packagenumber);
+        const nb = toNum(b.packagenumber);
+        if (na !== nb) return na - nb;
+        // Fallback to natural string compare when numbers equal/missing
+        const sa = String(a.packagenumber ?? "");
+        const sb = String(b.packagenumber ?? "");
+        return sa.localeCompare(sb, undefined, { numeric: true, sensitivity: "base" });
+      });
+      setPkgList(sorted as any);
     } catch (e) {
       console.error("Package load error", e);
     } finally {
@@ -284,7 +297,7 @@ const ProjectDetailPage = () => {
     if (!projectId || savingPackage) return;
     try {
       if (!newPkg.name) return;
-      setSavingPackage(true);  // prevent multiple submissions
+      setSavingPackage(true);
       const autoSerial = !pkgToEdit
         ? await computeNextSerial()
         : pkgToEdit.packagenumber || null;
@@ -379,7 +392,6 @@ const ProjectDetailPage = () => {
         submitalStatus: "IN_PROGRESS",
         remarks: "",
         ifaVersion: "",
-        bfaVersion: "",
         ifcVersion: "",
       });
       setPkgToEdit(null);
@@ -713,7 +725,7 @@ const ProjectDetailPage = () => {
                               />
                             </div>
                           </div>
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="text-sm font-medium">
                                 IFA Version
@@ -725,21 +737,6 @@ const ProjectDetailPage = () => {
                                   setNewPkg((p) => ({
                                     ...p,
                                     ifaVersion: e.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">
-                                BFA Version
-                              </label>
-                              <Input
-                                placeholder="e.g., BFA-01"
-                                value={newPkg.bfaVersion}
-                                onChange={(e) =>
-                                  setNewPkg((p) => ({
-                                    ...p,
-                                    bfaVersion: e.target.value,
                                   }))
                                 }
                               />
@@ -866,7 +863,6 @@ const ProjectDetailPage = () => {
                                           pkg.status || "IN_PROGRESS",
                                         remarks: pkg.notes || "",
                                         ifaVersion: pkg.ifaversion || "",
-                                        bfaVersion: pkg.bfaversion || "",
                                         ifcVersion: pkg.ifcversion || "",
                                       });
                                       setOpenPkgDialog(true);

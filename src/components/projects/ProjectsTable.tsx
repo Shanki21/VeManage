@@ -132,11 +132,11 @@ const getProgressColor = (percent: number) => {
   return "bg-destructive";
 };
 
-const LOCATION_OPTIONS = ["Noida", "Mysore", "Kannur", "Dheradun"]; // canonical UI list
+const LOCATION_OPTIONS = ["Noida", "Mysore", "Kannur", "Dehradun"]; // canonical UI list
 function normalizeLocation(raw?: string | null): string | undefined {
   if (!raw) return undefined;
   const val = raw.trim();
-  if (/^dehra?dun$/i.test(val)) return "Dheradun"; // map both Dehradun & Dheradun to one spelling
+  if (/^dehra?dun$/i.test(val)) return "Dehradun"; // map both Dehradun & Dheradun to one spelling
   // match ignoring case
   const found = LOCATION_OPTIONS.find(
     (l) => l.toLowerCase() === val.toLowerCase()
@@ -567,9 +567,8 @@ export function ProjectsTable({
 
       toast({
         title: "Success",
-        description: `Project "${projectToDelete.name}" ${
-          force ? "and related data" : ""
-        } deleted successfully!`,
+        description: `Project "${projectToDelete.name}" ${force ? "and related data" : ""
+          } deleted successfully!`,
       });
 
       // Close dialog and reset state
@@ -623,30 +622,40 @@ export function ProjectsTable({
 
     const name = (project.name ?? "").toString();
     const clientName = (project.client ?? "").toString();
+    // clientPM may be stored as a string name (clientPM) or a numeric id (clientPm)
+    const clientPmName = (project.clientPM ?? project.clientPm ?? "").toString();
     const lead = (project.teamLead ?? "").toString();
     const sol = (project.solProjectNo ?? "").toString();
+    // Prefer explicit branch field (set by AddProjectDialog) then portalName/location
     const locationRaw = (
-      project.portalName ??
-      project.location ??
-      ""
+      project.branch ?? project.portalName ?? project.location ?? ""
     ).toString();
     const location = normalizeLocation(locationRaw) || "";
+    // Normalized compare helper for location matching: remove non-alphanumeric
+    // characters and compare lowercase. This lets "Mysore, India" match
+    // "Mysore" or small spelling variants.
+    const normalizeForCompare = (s: string) =>
+      String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 
     const activeQuery = (globalSearch || searchTerm).toLowerCase();
     const matchesSearch =
       !activeQuery ||
       name.toLowerCase().includes(activeQuery) ||
       clientName.toLowerCase().includes(activeQuery) ||
+      clientPmName.toLowerCase().includes(activeQuery) ||
       lead.toLowerCase().includes(activeQuery) ||
       sol.toLowerCase().includes(activeQuery);
 
+    // Status filter (external overrides internal)
     const activeStatusFilter = statusFilterExternal ?? statusFilter;
     const matchesStatus = restrictToLive
       ? project.statusLabel === "Live"
       : activeStatusFilter === "all" ||
-        project.statusLabel === activeStatusFilter;
+      project.statusLabel === activeStatusFilter;
+    // Location filter
     const matchesLocation =
-      locationFilter === "all" || location === locationFilter;
+      locationFilter === "all" ||
+      normalizeForCompare(location) === normalizeForCompare(locationFilter);
 
     const matchesClient =
       clientFilterId == null ||
@@ -654,15 +663,15 @@ export function ProjectsTable({
     return matchesSearch && matchesStatus && matchesLocation && matchesClient;
   });
 
-  // Sort filtered projects by Sol Project No in descending order so newly added
-  const sortedProjects = (() => {  
-    const extractNumber = (s?: string) => { 
+  // and falls back to string comparison if parsing fails.
+  const sortedProjects = (() => {
+    const extractNumber = (s?: string) => {
       if (!s) return NaN;
       const m = String(s).match(/(\d+)(?!.*\d)/); // last group of digits
       return m ? Number(m[1]) : NaN;
     };
 
-    return [...filteredProjects].sort((a, b) => {  //
+    return [...filteredProjects].sort((a, b) => {
       const aKey = (a.solProjectNo || a.projectNo || "").toString();
       const bKey = (b.solProjectNo || b.projectNo || "").toString();
       const aNum = extractNumber(aKey);
@@ -855,12 +864,12 @@ export function ProjectsTable({
                                 prev.map((p) =>
                                   p.id === project.id
                                     ? {
-                                        ...p,
-                                        solTLId: val ? Number(val) : null,
-                                        teamLead:
-                                          leads.find((l) => l.id === val)
-                                            ?.name ?? "",
-                                      }
+                                      ...p,
+                                      solTLId: val ? Number(val) : null,
+                                      teamLead:
+                                        leads.find((l) => l.id === val)
+                                          ?.name ?? "",
+                                    }
                                     : p
                                 )
                               );
@@ -888,12 +897,12 @@ export function ProjectsTable({
                                 prev.map((p) =>
                                   p.id === project.id
                                     ? {
-                                        ...p,
-                                        clientId: val ? Number(val) : null,
-                                        client:
-                                          clientsList.find((c) => c.id === val)
-                                            ?.name ?? String(val),
-                                      }
+                                      ...p,
+                                      clientId: val ? Number(val) : null,
+                                      client:
+                                        clientsList.find((c) => c.id === val)
+                                          ?.name ?? String(val),
+                                    }
                                     : p
                                 )
                               );
@@ -942,8 +951,8 @@ export function ProjectsTable({
                         {project.expectedCompletion
                           ? String(project.expectedCompletion).slice(0, 10)
                           : project.estimationDate
-                          ? String(project.estimationDate).slice(0, 10)
-                          : "-"}
+                            ? String(project.estimationDate).slice(0, 10)
+                            : "-"}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -957,11 +966,8 @@ export function ProjectsTable({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          className={getStatusColor(
-                            project.statusLabel || project.status || ""
-                          )}
-                        >
+                        {/* Always render the status badge using the same style as 'Live' */}
+                        <Badge className={getStatusColor("Live")}>
                           {project.statusLabel || project.status || "-"}
                         </Badge>
                       </TableCell>
